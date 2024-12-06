@@ -155,6 +155,17 @@ def debug_print(
             else:
                 print(col, end="")
         print()
+    print()
+
+
+def move_ahead(guard, map, visited):
+    visited.add((guard.row, guard.column, guard.direction))
+    ahead_char = guard.look_ahead(map)
+    while ahead_char == "#":
+        guard.direction = guard.direction.right()
+        visited.add((guard.row, guard.column, guard.direction))
+        ahead_char = guard.look_ahead(map)
+    guard.move()
 
 
 def check_path_for_loops(
@@ -162,39 +173,15 @@ def check_path_for_loops(
     guard: Guard,
     visited: set[tuple[int, int, Direction]],
 ) -> bool:
-    """
-    Determine if the guard's path that would cause a loop.
-
-    We'll assume a theoretical obstacle has *already been placed*.
-    Essentially, if the guard walks into a visited space in the same direction, it will loop,
-    but we need to check the entire theoretical path because he could hit obstacles from a different direction.
-    """
+    """Shortcut a full traversal by checking if the guard is in a loop."""
     theoretically_visited = set(visited)
     while 0 <= guard.row < len(map) and 0 <= guard.column < len(map[0]):
-        # debug_print(map, guard, visited, set(), theoretically_visited - visited)
-        # input()
         if (guard.row, guard.column, guard.direction) in theoretically_visited:
+            debug_print(map, guard, visited, set(), theoretically_visited-visited)
+            input()
             return True
-        theoretically_visited.add((guard.row, guard.column, guard.direction))
-        ahead_char = guard.look_ahead(map)
-        if ahead_char == "#":
-            guard.direction = guard.direction.right()
-            theoretically_visited.add((guard.row, guard.column, guard.direction))
-        guard.move()
+        move_ahead(guard, map, theoretically_visited)
     return False
-
-
-def traverse_map_with_directions(
-    map: list[str], guard: Guard
-) -> set[tuple[int, int, Direction]]:
-    visited = set()
-    while 0 <= guard.row < len(map) and 0 <= guard.column < len(map[0]):
-        visited.add((guard.row, guard.column, guard.direction))
-        ahead_char = guard.look_ahead(map)
-        if ahead_char == "#":
-            guard.direction = guard.direction.right()
-        guard.move()
-    return visited
 
 
 def part2():
@@ -202,34 +189,21 @@ def part2():
     data = read_input()
     map, guard = parse_map(data)
 
-    # First, get a clean set of the unobstructed path.
-    full_visited = traverse_map_with_directions(
-        map, Guard(guard.row, guard.column, guard.direction)
-    )
-
-    # Then, we'll walk the path again, but this time we'll place obstacles in the way.
-    possible_obstacles = set()  # Just (row, col) tuples
     visited = set()  # with direction
+    possible_obstacles = set()  # Just (row, col) tuples
     while 0 <= guard.row < len(map) and 0 <= guard.column < len(map[0]):
-        debug_print(map, guard, visited, possible_obstacles)
-        input()
-        visited.add((guard.row, guard.column, guard.direction))
-        ahead_char = guard.look_ahead(map)
         # Imagine a world where there is an obstacle in the way.
         # If that world loops, then the obstacle is a candidate.
         if (
-            ahead_char != "#"
-            and guard.ahead_index() not in possible_obstacles
+            guard.ahead_index() not in possible_obstacles
             and check_path_for_loops(
                 add_obstacle(map, *guard.ahead_index()),
                 Guard(guard.row, guard.column, guard.direction.right()),
-                full_visited,
+                visited,
             )
         ):
             possible_obstacles.add(guard.ahead_index())
-        if ahead_char == "#":
-            guard.direction = guard.direction.right()
-        guard.move()
+        move_ahead(guard, map, visited)
     return len(possible_obstacles)
 
 
@@ -237,7 +211,11 @@ def part2():
 # 1519 too high
 # 1524 will still be too high
 # 1591 way too high
+# 1593 obsiously wrong
+# 1415 is wrong
+# 1378 also wrong (2 hrs later: still wrong)
+# 1614 strikes me as, perhaps, too high
 
 
 if __name__ == "__main__":
-    print(part1())
+    print(part2())
