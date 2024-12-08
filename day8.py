@@ -38,13 +38,13 @@ def debug_print(data, antinodes):
         print()
 
 
-def calculate_antinodes(locs: list[tuple[int, int]]) -> set[tuple[int,int]]:
+def calculate_antinodes(locs: list[tuple[int, int]]) -> set[tuple[int, int]]:
     """
     > An antinode occurs at any point that is perfectly in line with two antennas of the same frequency
     > - but only when one of the antennas is twice as far away as the other.
     > This means that for any pair of antennas with the same frequency,
     > there are two antinodes, one on either side of them.
-     """
+    """
     antinodes = set()
     # For every pair of distances, calculate the distance between them
     # and save the two points that same distance on either side of the pair.
@@ -61,7 +61,6 @@ def part1() -> int:
     input = read_input()
     lines = input.splitlines()
     data = parse_input(input)
-    print(data)
     antinodes = set()
     for locs in data.values():
         print(locs)
@@ -69,19 +68,50 @@ def part1() -> int:
         debug_print(input, new_antinodes)
         antinodes |= new_antinodes
     # Remove points outside the grid
-    antinodes = {loc for loc in antinodes if 0 <= loc[0] < len(lines) and 0 <= loc[1] < len(lines[0])}
+    antinodes = {
+        loc
+        for loc in antinodes
+        if 0 <= loc[0] < len(lines) and 0 <= loc[1] < len(lines[0])
+    }
     return len(antinodes)
 
-def check_attempts1(result):
-    if result == 14:
-        return " the sample answer"
-    if result >= 433:
-        return " too high"
-    return " ?"
+
+def calculate_antinodes2(
+    locs: list[tuple[int, int]], rows: int, cols: int
+) -> set[tuple[int, int]]:
+    antinodes = set()
+    for a, b in combinations(locs, 2):
+        antinodes.add(a)
+        antinodes.add(b)
+        x_dist, y_dist = taxicab_distances(a, b)
+        x, y = a
+        while 0 <= x < rows and 0 <= y < cols:
+            x += x_dist
+            y += y_dist
+            if 0 <= x < rows and 0 <= y < cols:
+                antinodes.add((x, y))
+        x, y = b
+        while 0 <= x < rows and 0 <= y < cols:
+            x -= x_dist
+            y -= y_dist
+            if 0 <= x < rows and 0 <= y < cols:
+                antinodes.add((x, y))
+    return antinodes
+
+
+def part2() -> int:
+    input = read_input()
+    lines = input.splitlines()
+    data = parse_input(input)
+
+    antinodes = set()
+    for antenna, locs in data.items():
+        new_antinodes = calculate_antinodes2(locs, len(lines), len(lines[0]))
+        debug_print(input, new_antinodes)
+        antinodes |= new_antinodes
+    return len(antinodes)
 
 
 if __name__ == "__main__":
-    result = part1()
-    print(result, end="")
-    print(check_attempts1(result))
-
+    result = part2()
+    print(result)
