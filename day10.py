@@ -67,21 +67,21 @@ def forge_trails(pt, data, trails):
     return trails[pt]
 
 
-def score_trailhead(trailhead, trails, data):
+def score_trailhead(trailhead, trails):
     """
     > A trailhead's score is the number of unique 9-height positions reachable from that trailhead via a hiking trail.
     """
-    unique_nines = {trail[-1] for trail in trails[trailhead] if data[trail[-1]] == 9}
+    unique_nines = {trail[-1] for trail in trails[trailhead]}
     # print(f"{trailhead}: {len(unique_nines)}")
     return len(unique_nines)
 
 
-def rate_trailhead(trailhead, trails, data):
+def rate_trailhead(trailhead, trails):
     """
     > A trailhead's rating is the number of distinct hiking trails which begin at that trailhead.
     (and end at a 9-height position)
     """
-    return len(list(trail for trail in trails[trailhead] if data[trail[-1]] == 9))
+    return len(list(trail for trail in trails[trailhead]))
 
 
 def do_the_thing(score_func):
@@ -96,7 +96,7 @@ def do_the_thing(score_func):
     trails = {pt: forge_trails(pt, data, trails_start) for pt in trailheads}
     # print(trails)
     # [[debug_print(data, trail) for trail in trails[th]] for th in trailheads]
-    return sum(score_func(th, trails, data) for th in trailheads)
+    return sum(score_func(th, trails) for th in trailheads)
 
 
 def part1():
