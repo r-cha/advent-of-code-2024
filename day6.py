@@ -102,108 +102,48 @@ def part1() -> int:
     return len(visited)
 
 
-def debug_print(
-    lab: list[str],
-    visited: set[Guard],
-    theoretically_visited: set[Guard] | None = None,
-    possible_obstacles: set[tuple[int, int]] | None = None,
-):
-    class Universe(enum.Enum):
-        THEORY = 1
-        FACT = 2
-
-    def did_visit(row: int, col: int, dirs: tuple):
-        if theoretically_visited and any(
-            Guard(row, col, d) in theoretically_visited for d in dirs
-        ):
-            return Universe.THEORY
-        return (
-            Universe.FACT if any(Guard(row, col, d) in visited for d in dirs) else None
-        )
-
-    def vertical_visited(row: int, col: int):
-        return did_visit(row, col, (Direction.NORTH, Direction.SOUTH))
-
-    def horizontal_visited(row: int, col: int):
-        return did_visit(row, col, (Direction.EAST, Direction.WEST))
-
-    for i, row in enumerate(lab):
-        for j, col in enumerate(row):
-            univ = horizontal_visited(i, j)
-            unih = vertical_visited(i, j)
-            if possible_obstacles and (i, j) in possible_obstacles:
-                print("\033[94mO\033[0m", end="")
-            elif univ or unih:
-                char = "?"
-                if univ and unih:
-                    char = "+"
-                elif univ:
-                    char = "-"
-                elif unih:
-                    char = "|"
-                if univ == Universe.THEORY or unih == Universe.THEORY:
-                    print("\033[91m" + char + "\033[0m", end="")
-                else:
-                    print(char, end="")
-            else:
-                print(col, end="")
-        print()
-    print()
+Point = tuple[int, int]
+Lab = dict[Point, str]
 
 
-def move_ahead(
-    guard: Guard,
-    lab: list[str],
-    visited: set[Guard],
-    obstacle: tuple[int, int] | None = None,
-) -> Guard:
-    """Visit the guard's space, then take an action (move or turn)"""
-    visited.add(guard)
-    ahead_char = guard.look_ahead(lab)
-    if ahead_char == "#" or (obstacle and guard.next_index() == obstacle):
-        return guard.turn()
-    return guard.move()
+def parse_data(input: str) -> Lab:
+    start = None
+    lab = {}
+    for r, line in enumerate(input.splitlines()):
+        for c, char in enumerate(line):
+            lab[(r, c)] = char
+            if char == "^":
+                start = (r, c)
+    assert start is not None
+    return lab, start
 
 
-def check_path_for_loops(
-    lab: list[str],
-    guard: Guard,
-    visited: set[Guard],
-    obstacle: tuple[int, int] | None,
-) -> bool:
-    theoretically_visited = set(visited)
-    while inbounds(guard.row, guard.column, lab):
-        if guard in theoretically_visited:
+def move(lab: Lab, position: Point, direction: Point, obstacle: Point | None = None):
+    dr, dc = direction
+    next_position = (position[0] + dr, position[1] + dc)
+    if lab.get(next_position) == "#" or next_position == obstacle:
+        return move(lab, position, (dc, -dr), obstacle)
+    return next_position, direction
+
+
+def traverse(lab: Lab, start: Point, obstacle: Point | None = None):
+    visited = set()
+    path = set()
+    location = start
+    direction = (-1, 0)
+    while location in lab:
+        if (location, direction) in path:
             return True
-        guard = move_ahead(guard, lab, theoretically_visited, obstacle)
-    return False
+        visited.add(location)
+        path.add((location, direction))
+        location, direction = move(lab, location, direction, obstacle)
+    return visited
 
 
-def part2():
-    """How many spaces can a new obstacle be placed in that would send the guard into a loop?"""
-    data = read_input()
-    lab, guard = parse_lab(data)
-    home = (guard.row, guard.column)
-
-    visited: set[Guard] = set()
-    possible_obstacles: set[tuple[int, int]] = set()
-    while inbounds(guard.row, guard.column, lab):
-        next_index = guard.next_index()
-        if (
-            guard.look_ahead(lab) not in {"#", None}  # Must be in bounds + not occupied
-            and next_index not in possible_obstacles  # Skip already checked obstacles
-            and next_index != home  # Not allowed, also not useful, but just in case
-            and check_path_for_loops(
-                lab,
-                Guard(guard.row, guard.column, guard.direction.right()),
-                visited,
-                next_index,
-            )
-        ):
-            possible_obstacles.add(next_index)
-        guard = move_ahead(guard, lab, visited)
-    debug_print(lab, visited, possible_obstacles=possible_obstacles)
-    return len(possible_obstacles)
+def part2_revisited():
+    lab, start = parse_data(read_input())
+    path = traverse(lab, start)
+    return sum(traverse(lab, start, obs) is True for obs in path)
 
 
 def err(result: int):
@@ -231,11 +171,13 @@ def err(result: int):
         return f" \033[91m{attempts[result]}"
     elif result > 1519:
         return " \033[91mtoo high"
+    elif result == 1304:
+        return " \033[1;32mthat's it!"
     return " \033[0;32mcould be it???"
 
 
 if __name__ == "__main__":
-    result = part2()
+    result = part2_revisited()
     print(result, end="")
     print(err(result), end="\033[0m")
     print()
