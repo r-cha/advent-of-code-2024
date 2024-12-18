@@ -1,6 +1,6 @@
 import sys
-from enum import Enum
-from typing import NamedTuple
+
+from sympy import Eq, Mod, S, init_printing, solve, symbols
 
 
 def read_input():
@@ -8,39 +8,29 @@ def read_input():
         return f.read().strip()
 
 
-class Registers(NamedTuple):
-    a: int
-    b: int
-    c: int
+class Registers:
+    __slots__ = ["a", "b", "c"]
+
+    def __init__(self, a, b, c):
+        self.a = a
+        self.b = b
+        self.c = c
 
     def write(self, register, value):
-        match register:
-            case "a":
-                return Registers(value, self.b, self.c)
-            case "b":
-                return Registers(self.a, value, self.c)
-            case "c":
-                return Registers(self.a, self.b, value)
-            case _:
-                raise ValueError(f"Invalid register {register}")
+        if register == "a":
+            return Registers(value, self.b, self.c)
+        elif register == "b":
+            return Registers(self.a, value, self.c)
+        elif register == "c":
+            return Registers(self.a, self.b, value)
+        else:
+            raise ValueError(f"Invalid register {register}")
+
+    def __repr__(self):
+        return f"Registers(a={self.a}, b={self.b}, c={self.c})"
 
 
-Instruction = int
-Program = list[Instruction]
-
-
-class Opcode(Enum):
-    ADV = 0
-    BXL = 1
-    BST = 2
-    JNZ = 3
-    BXC = 4
-    OUT = 5
-    BDV = 6
-    CDV = 7
-
-
-def combo(registers: Registers, operand: int) -> int:
+def combo(registers, operand):
     match operand:
         case 0 | 1 | 2 | 3:
             return operand
@@ -54,7 +44,7 @@ def combo(registers: Registers, operand: int) -> int:
             raise ValueError(f"Invalid combo operand {operand}")
 
 
-def _dv(registers: Registers, operand: int) -> int:
+def _dv(registers, operand):
     return registers.a // (2 ** combo(registers, operand))
 
 
@@ -63,11 +53,13 @@ def adv(registers, operand):
 
 
 def bxl(registers, operand):
-    return Registers(registers.a, registers.b ^ operand, registers.c)
+    return Registers(registers.a, registers.b ^ S(operand), registers.c)
 
 
 def bst(registers, operand):
-    return Registers(registers.a, combo(registers, operand) % 8, registers.c)
+    return Registers(
+        registers.a, Mod(combo(registers, operand), 8, evaluate=False), registers.c
+    )
 
 
 def jnz(registers, operand, ip):
@@ -79,7 +71,7 @@ def bxc(registers, operand):
 
 
 def out(registers, operand):
-    return combo(registers, operand) % 8
+    return Mod(combo(registers, operand), 8, evaluate=False)
 
 
 def bdv(registers, operand):
@@ -91,12 +83,12 @@ def cdv(registers, operand):
 
 
 operations = {
-    Opcode.ADV: adv,
-    Opcode.BXL: bxl,
-    Opcode.BST: bst,
-    Opcode.BXC: bxc,
-    Opcode.BDV: bdv,
-    Opcode.CDV: cdv,
+    0: adv,
+    1: bxl,
+    2: bst,
+    4: bxc,
+    6: bdv,
+    7: cdv,
 }
 
 
@@ -105,15 +97,15 @@ def interpret(r, program):
     stdout = []
     ip = 0
     while ip < len(program):
-        opcode = Opcode(program[ip])
+        opcode = program[ip]
         operand = program[ip + 1]
         # print(ip, opcode, operand, registers, stdout)
         if op := operations.get(opcode):
             registers = op(registers, operand)
             ip += 2
-        elif opcode == Opcode.JNZ:
+        elif opcode == 3:
             ip = jnz(registers, operand, ip)
-        elif opcode == Opcode.OUT:
+        elif opcode == 5:
             stdout.append(out(registers, operand))
             ip += 2
     return stdout
@@ -140,5 +132,40 @@ def part1():
     return dump(stdout)
 
 
+def symbolic_interpret(r, program):
+    registers = r
+    stdout = []
+    ip = 0
+    while ip < len(program):
+        opcode = program[ip]
+        operand = program[ip + 1]
+        if op := operations.get(opcode):
+            registers = op(registers, operand)
+            ip += 2
+        elif opcode == 3:
+            ip = jnz(registers, operand, ip)
+        elif opcode == 5:
+            stdout.append(out(registers, operand))
+            ip += 2
+    return stdout
+
+
+def part2():
+    _, program = parse_data(read_input())
+    # Define symbolic variables
+    A, B, C = symbols("A B C", integer=True, nonnegative=True)
+    initial_registers = Registers(A, B, C)
+    # Perform symbolic execution
+    symbolic_stdout = symbolic_interpret(initial_registers, program)
+    init_printing(use_unicode=True)
+    print(symbolic_stdout)
+    # Create equations where each stdout element equals the corresponding program instruction
+    equations = [Eq(expr, program[i]) for i, expr in enumerate(symbolic_stdout)]
+    # Solve for A
+    solution = solve(equations, A)
+    return solution
+
+
 if __name__ == "__main__":
     print(part1())
+    print(part2())
