@@ -45,7 +45,7 @@ def combo(registers, operand):
         case 5:
             return registers.b, "b"
         case 6:
-            return registers.c
+            return registers.c, "c"
         case _:
             raise ValueError(f"Invalid combo operand {operand}")
 
