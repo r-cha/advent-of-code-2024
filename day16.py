@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 import heapq
 import sys
 
@@ -46,23 +46,23 @@ def debug_print(race, start, end, path):
 
 
 def find_paths(race, start, end):
-    pq = [
-        (0, (start[0] - 1, start[1]), start, [])
-    ]  # (cost, prev_position, current_position, path)
-    counter = Counter()
-    min_cost = float("inf")
+    # (cost, prev_position, current_position, path)
+    pq = [(0, (start[0] - 1, start[1]), start, [])]
+    counter = Counter()  # count how many times we've visited a space
+    min_cost = float("inf")  # minimum cost to reach the end
+    min_cost_paths = defaultdict(set)  # spaces on paths that reach the end
 
     while pq:
         cost, previous, current, path = heapq.heappop(pq)
 
-        if counter[current] > 10:
+        if counter[current] > 50:  # Arbitrary magic number that allows revisiting spaces
             continue
         counter[current] += 1
 
         if current == end:
+            min_cost_paths[cost] |= set(path)
             min_cost = min(min_cost, cost)
             print(cost)
-            # debug_print(race, start, end, path)
             continue
 
         for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
@@ -76,14 +76,21 @@ def find_paths(race, start, end):
                 new_cost = cost + 1 + is_turn * 1000
                 heapq.heappush(pq, (new_cost, current, next_pos, new_path))
 
-    return min_cost
+    debug_print(race, start, end, min_cost_paths[min_cost])
+    return min_cost, len(min_cost_paths[min_cost] | {start})
 
 
 def part1():
     race, start, end = parse_input(read_input())
-    min_cost = find_paths(race, start, end)
+    min_cost, _ = find_paths(race, start, end)
     return min_cost
+
+# 485 too low
+
+def part2():
+    _, spaces = find_paths(*parse_input(read_input()))
+    return spaces
 
 
 if __name__ == "__main__":
-    print(part1())
+    print(part2())
