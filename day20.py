@@ -53,47 +53,17 @@ def score_cells(racetrack, start, end):
     return score
 
 
-def find_shortcuts(scores, cheat_length=2):
-    """
-    Return all possible shortcuts on the track:
-    points adjacent to two points on the racetrack in the same axis
-    """
-    shortcuts = defaultdict(
-        lambda: float("inf")
-    )  # maps a shortcut to the picoseconds it saves
-    for x, y in sorted(scores, key=lambda p: scores[p]):
-        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            shortcut = x + dx, y + dy
-            next_point = x + (cheat_length * dx), y + (cheat_length * dy)
-            if shortcut not in scores and next_point in scores:
-                diff = scores[next_point] - scores[(x, y)] - cheat_length
-                if diff > 0:
-                    shortcuts[shortcut] = min(shortcuts[shortcut], diff)
-    return shortcuts
-
-
-def part1():
-    data, start, end = parse_input(read_input())
-    scores = score_cells(data, start, end)
-    shortcuts = find_shortcuts(scores)
-    cheats_per_score = Counter(shortcuts.values())
-    debug_print(data, start, end, {s for s in shortcuts if shortcuts[s] >= 100})
-    return sum(cheats for score, cheats in cheats_per_score.items() if score >= 100)
-
-
-
-
 def taxicab_distance(p1, p2):
     return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
 
 def spaces_within_x_of_point(point, x):
-    for dx, dy in product(range(-x, x+1), repeat=2):
+    for dx, dy in product(range(-x, x + 1), repeat=2):
         if taxicab_distance(point, (point[0] + dx, point[1] + dy)) <= x:
             yield (point[0] + dx, point[1] + dy)
 
 
-def find_shortcuts2(scores, max_cheat_length=20):
+def find_shortcuts(scores, max_cheat_length):
     """
     Return all racetrack spaces accessible within 20 units of each space.
     These shortcuts will be (start, finish) pairs mapped to the # of picoseconds saved.
@@ -113,14 +83,25 @@ def find_shortcuts2(scores, max_cheat_length=20):
 
 
 # 2440094 too high
+# 1027164
+
+
+def run_it(cheat_length, minimum_gains):
+    data, start, end = parse_input(read_input())
+    scores = score_cells(data, start, end)
+    shortcuts = find_shortcuts(scores, cheat_length)
+    count_per_saves = Counter(shortcuts.values())
+    return sum(
+        cheats for saves, cheats in count_per_saves.items() if saves >= minimum_gains
+    )
+
+
+def part1():
+    return run_it(2, 100)
 
 
 def part2():
-    data, start, end = parse_input(read_input())
-    scores = score_cells(data, start, end)
-    shortcuts = find_shortcuts2(scores, 20)
-    count_per_saves = Counter(shortcuts.values())
-    return sum(cheats for saves, cheats in count_per_saves.items() if saves >= 100)
+    return run_it(20, 100)
 
 
 if __name__ == "__main__":
