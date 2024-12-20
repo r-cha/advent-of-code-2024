@@ -1,4 +1,5 @@
 from collections import defaultdict, Counter
+from itertools import product
 import sys
 
 
@@ -71,9 +72,6 @@ def find_shortcuts(scores, cheat_length=2):
     return shortcuts
 
 
-# 427 too low
-
-
 def part1():
     data, start, end = parse_input(read_input())
     scores = score_cells(data, start, end)
@@ -83,5 +81,47 @@ def part1():
     return sum(cheats for score, cheats in cheats_per_score.items() if score >= 100)
 
 
+
+
+def taxicab_distance(p1, p2):
+    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+
+def spaces_within_x_of_point(point, x):
+    for dx, dy in product(range(-x, x+1), repeat=2):
+        if taxicab_distance(point, (point[0] + dx, point[1] + dy)) <= x:
+            yield (point[0] + dx, point[1] + dy)
+
+
+def find_shortcuts2(scores, max_cheat_length=20):
+    """
+    Return all racetrack spaces accessible within 20 units of each space.
+    These shortcuts will be (start, finish) pairs mapped to the # of picoseconds saved.
+    Keep in mind that the time saved is the difference in original score MINUS the time it takes to accompolish the shortcut.
+    """
+    shortcuts = defaultdict(lambda: float("inf"))
+    for start in sorted(scores, key=lambda p: scores[p]):
+        for end in spaces_within_x_of_point(start, max_cheat_length):
+            if end in scores:
+                diff = scores[end] - scores[start] - taxicab_distance(start, end)
+                if diff > 0:
+                    shortcuts[(start, end)] = min(shortcuts[(start, end)], diff)
+                # debug_print(set(scores), start, end, {})
+                # print("DIFF:", diff)
+                # input()
+    return shortcuts
+
+
+# 2440094 too high
+
+
+def part2():
+    data, start, end = parse_input(read_input())
+    scores = score_cells(data, start, end)
+    shortcuts = find_shortcuts2(scores, 20)
+    count_per_saves = Counter(shortcuts.values())
+    return sum(cheats for saves, cheats in count_per_saves.items() if saves >= 100)
+
+
 if __name__ == "__main__":
-    print(part1())
+    print(part2())
